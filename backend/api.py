@@ -14,7 +14,7 @@ async def convert(file: UploadFile = File(...)):
 
     # Create a PDF reader object
     with open(file.filename, 'rb') as pdf_file:
-        pdf_reader = PyPDF2.PdfFileReader(pdf_file)
+        pdf_reader = PyPDF2.PdfReader(pdf_file)
 
         # Create a text file for writing
         with open('output.txt', 'w') as txt_file:
