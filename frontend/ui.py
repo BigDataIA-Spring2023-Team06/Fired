@@ -121,8 +121,12 @@ with col3:
     # Get resume and job description from MongoDB
     params_rs_jd = {"filename": selected_resume}
     response = requests.get(f"{host}/get_resume_and_job_description/", params=params_rs_jd)
-    job_description_new = response.json().get("job_description")
-    resume_new = response.json().get("resume")
+    job_description_new = response.json()
+    job_description_new = job_description_new['job_description']
+    resume_new = response.json()
+    resume_new=resume_new['resume']
+    print(resume_new)
+
 
     if job_description_new:
         # Role Based Questions
