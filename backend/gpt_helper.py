@@ -1,8 +1,11 @@
 import openai
 import boto3 
+import os
 
 
-openai.api_key = ""
+open_ai_key = os.getenv("OPENAI_API_KEY")
+
+openai.api_key = open_ai_key
 
 def get_response_gpt(query):
     

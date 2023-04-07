@@ -74,17 +74,25 @@ async def upload_file(filename:str ,file: UploadFile = File(...)):
         return {"error": f"Client error: {e}"}
 
 #API to get the resume and job description from mongoDB
-@app.get("/get_resume_and_job_description")
+@app.get("/get_resume_and_job_description/")
 def get_resume_and_job_description(filename: str):
-    collection_resume = db[collection_resume]
-    collection_job_description = db[collection_job_description]
-    document_resume = collection_resume.find_one({"_id": filename})
-    document_job_description = collection_job_description.find_one({"_id": filename})
+    col_resume = db[collection_resume]
+    col_job_description = db[collection_job_description]
+    document_resume = col_resume.find_one({"_id": filename})
+    document_job_description = col_job_description.find_one({"_id": filename})
     return {"resume": document_resume, "job_description": document_job_description}
 
+#API to empty out the resume and job description collection
+@app.get("/empty_resume_and_job_description/")
+def empty_resume_and_job_description():
+    col_resume = db[collection_resume]
+    col_job_description = db[collection_job_description]
+    col_resume.delete_many({})
+    col_job_description.delete_many({})
+    return {"message": "Resume and Job Description collections are empty now"}
 
 # #API endpoint to add job description to the mongoDB
-@app.post("/add_job_description")
+@app.get("/add_job_description/")
 def add_job_description(filename:str, job_description: str):
     collection = db[collection_job_description]
     document = {"_id": filename, "job_description": job_description}
