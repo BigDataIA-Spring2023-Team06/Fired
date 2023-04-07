@@ -114,44 +114,63 @@ with col2:
 # # # Add job description input
 # # job_description = st.text_input("Job Description")
 # # resume = st.text_input("Paste Your Resume Here")
+
 with col3:
     st.header("Analytics")
-    # Get resume and job description from mongodb
+
+    # Get resume and job description from MongoDB
     params_rs_jd = {"filename": selected_resume}
     response = requests.get(f"{host}/get_resume_and_job_description/", params=params_rs_jd)
-    job_description_new = response.json()["job_description"]
-    resume_new = response.json()["resume"]
-    params_jd_qs = {"job_description": job_description_new, "no_of_questions": 1}
-    response = requests.get(f"{host}/jd_question/", params=params_jd_qs)
-    if response.status_code == 200:
-        st.write("Role Based Questions")
-        st.write(response.json()["question"])
-    if job_description_new is not None:
+    job_description_new = response.json().get("job_description")
+    resume_new = response.json().get("resume")
+
+    if job_description_new:
+        # Role Based Questions
+        params_jd_qs = {"job_description": job_description_new, "no_of_questions": 1}
+        response = requests.get(f"{host}/jd_question/", params=params_jd_qs)
+        if response.status_code == 200:
+            st.write("Role Based Questions")
+            st.write(response.json().get("question"))
+
+        # Resume Feedback and Customized Resume Questions
         params_match = {"resume": resume_new, "jd": job_description_new}
         response = requests.get(f"{host}/resume_match/", params=params_match)
         if response.status_code == 200:
-            feedback = response.json()["resume_feedback"]
+            feedback = response.json().get("resume_feedback")
             st.write(feedback)
-        params_resume_qs = {"resume": resume_new, "no_of_questions": 1}
-        response = requests.get(f"{host}/resume_question/", params=params_resume_qs)
-        if response.status_code == 200:
-            st.write("Customized Resume Questions")
-            st.write(response.json()["resume_question"])
-        params = {"text":feedback}
-        response_adjectives = requests.get(f"{host}/get_adjectives/", params=params)
-        if response_adjectives.status_code == 200:
-            adjectives = response_adjectives.json()['adjectives']
-            params_adjective = {"text":adjectives}
-            print(adjectives)
-            match = requests.get(f"{host}/sentiment/", params = params_adjective)
-            st.write("Processing")
-            
-            if match.status_code == 200:
-                match_perc = match.json()
-                st.write(match_perc)
-                print(match_perc)
-            else:
-                st.write("Failed to Load Sentiment Analysis Model")
+
+            params_resume_qs = {"resume": resume_new, "no_of_questions": 1}
+            response = requests.get(f"{host}/resume_question/", params=params_resume_qs)
+            if response.status_code == 200:
+                st.write("Customized Resume Questions")
+                st.write(response.json().get("resume_question"))
+
+                # Sentiment Analysis
+                params = {"text": feedback}
+                response_adjectives = requests.get(f"{host}/get_adjectives/", params=params)
+                if response_adjectives.status_code == 200:
+                    adjectives = response_adjectives.json().get("adjectives")
+                    params_adjective = {"text": adjectives}
+                    match = requests.get(f"{host}/sentiment/", params=params_adjective)
+                    st.write("Processing")
+
+                    if match.status_code == 200:
+                        match_perc = match.json()
+                        label = match_perc["result"][0]["label"]
+                        score = match_perc["result"][0]["score"]
+                        st.write(f"Sentiment: {label}")
+                        st.write(f"Confidence: {round(float(score),2)*100}%")
+
+#####################deprecated code#####################
+    #                 else:
+    #                     st.write("Failed to Load Sentiment Analysis Model")
+    #             else:
+    #                 st.write("Failed to retrieve adjectives for sentiment analysis")
+    #     else:
+    #         st.write("Failed to retrieve resume feedback")
+    # else:
+    #     st.write("Failed to retrieve job description")
+
 
 
 #     # Add three buttons
