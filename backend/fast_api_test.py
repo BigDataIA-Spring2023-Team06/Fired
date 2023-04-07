@@ -2,6 +2,10 @@ from fastapi import FastAPI, File, UploadFile
 from transformers import pipeline
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import gpt_helper
+import boto3
+import botocore
+import os
+import time
 
 import PyPDF2
 
@@ -34,6 +38,39 @@ async def convert(file: UploadFile = File(...)):
 
     # Return the path to the text file
     return {"text_file_path": "output.txt"}
+
+
+###################API to upload file to s3############################
+aws_access_key_id = os.environ.get('AWS_ACCESS_KEY_ID')
+aws_secret_access_key = os.environ.get('AWS_SECRET_ACCESS_KEY')
+s3_bucket = os.environ.get('S3_BUCKET')
+region_name = os.environ.get('S3_REGION')
+
+# Create a new S3 client
+# s3 = boto3.client('s3', region_name=region_name, aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key)
+
+s3 = boto3.client(
+)
+
+s3_bucket = "goes-team6"
+
+@app.post("/uploadfile/")
+async def upload_file(file: UploadFile = File(...)):
+    """
+    Uploads a file to an S3 bucket.
+    """
+    try:
+        # Create a key for the file in the S3 bucket
+        timestamp = int(time.time())
+        key = f"{timestamp}.pdf"
+        # Upload the file to S3
+        s3.upload_fileobj(file.file, s3_bucket, f"resumes/{key}")
+        
+        return {"message": "File uploaded successfully!", "filename_in_s3":key}
+    except botocore.exceptions.ParamValidationError as e:
+        return {"error": f"Parameter validation error: {e}"}
+    except botocore.exceptions.ClientError as e:
+        return {"error": f"Client error: {e}"}
 
 
 @app.get("/resume_question/")

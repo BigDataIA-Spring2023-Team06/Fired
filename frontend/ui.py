@@ -5,6 +5,10 @@ import requests
 
 
 host = 'http://localhost:8000'
+headers = {'accept': 'application/json'}
+ALLOWED_EXTENSIONS = {'pdf'}
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 st.set_page_config(page_title="FIRED!", page_icon=":guardsman:")
 
@@ -24,8 +28,20 @@ st.markdown(
 st.title("FIRED!")
 st.write("Upload your resume and enter a job description to get started")
 # Add file uploader and dropdown for selecting resumes
-uploaded_files = st.file_uploader("Upload one or more resumes", type="pdf", accept_multiple_files=True)
-resume_names = [file.name for file in uploaded_files]
+file = st.file_uploader("Upload one or more resumes", type="pdf", accept_multiple_files=False)
+
+if file is not None:
+    if True:
+        files = {"file": file.getvalue()}
+        # Call the API
+        response = requests.post(f"{host}/uploadfile/", headers=headers, files=files)
+        
+        if response.status_code == 200:
+            st.success("File uploaded successfully")
+            st.write(response.json()["filename_in_s3"])
+                
+                
+resume_names = ["ABC", "DEF"]
 selected_resume = st.selectbox("Select a resume", resume_names)
 
 # Add job description input
@@ -72,15 +88,15 @@ if st.button("Resume Match Details"):
          
 
 # If a resume was selected
-if selected_resume:
-    # Read the contents of the selected resume
-    for file in uploaded_files:
-        if file.name == selected_resume:
-            with open(file.name, 'rb') as f:
-                pdf_reader = PdfReader(f)
-                text = ""
-                for page in pdf_reader.pages:
-                    text += page.extract_text()
+# if selected_resume:
+#     # Read the contents of the selected resume
+#     for file in uploaded_files:
+#         if file.name == selected_resume:
+#             with open(file.name, 'rb') as f:
+#                 pdf_reader = PdfReader(f)
+#                 text = ""
+#                 for page in pdf_reader.pages:
+#                     text += page.extract_text()
 
             # # Display the selected resume
             # st.write("Selected resume:")
