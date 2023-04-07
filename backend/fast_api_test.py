@@ -6,39 +6,18 @@ import boto3
 import botocore
 import os
 import time
-
+import io
+from PyPDF2 import PdfReader
+from pymongo import MongoClient
 import PyPDF2
 
 app = FastAPI()
 
-@app.post("/convert")
-async def convert(file: UploadFile = File(...)):
-
-    # Open the uploaded PDF file in read-binary mode
-    with open(file.filename, 'wb') as pdf_file:
-        contents = await file.read()
-        pdf_file.write(contents)
-
-    # Create a PDF reader object
-    with open(file.filename, 'rb') as pdf_file:
-        pdf_reader = PyPDF2.PdfFileReader(pdf_file)
-
-        # Create a text file for writing
-        with open('output.txt', 'w') as txt_file:
-
-            # Loop through all the pages in the PDF file
-            for page_num in range(pdf_reader.getNumPages()):
-
-                # Extract the text from the page
-                page = pdf_reader.getPage(page_num)
-                text = page.extractText()
-
-                # Write the text to the text file
-                txt_file.write(text)
-
-    # Return the path to the text file
-    return {"text_file_path": "output.txt"}
-
+#MongoDB connection
+mongo_uri = os.getenv("MONGO_URI")
+db_name = os.getenv("MONGO_DB")
+collection_resume = os.getenv("MONGO_COLLECTION_RESUMES")
+collection_job_description = os.getenv("MONGO_COLLECTION_JD")
 
 ###################API to upload file to s3############################
 aws_access_key_id = os.environ.get('AWS_ACCESS_KEY_ID')
@@ -47,31 +26,77 @@ s3_bucket = os.environ.get('S3_BUCKET')
 region_name = os.environ.get('S3_REGION')
 
 # Create a new S3 client
-# s3 = boto3.client('s3', region_name=region_name, aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key)
+s3 = boto3.client('s3', region_name=region_name, aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key)
 
-s3 = boto3.client(
-)
+# Create the MongoClient using the SSL context object
+client = MongoClient(mongo_uri, tlsAllowInvalidCertificates=True)
 
-s3_bucket = "goes-team6"
+# Use the MongoClient instance to perform database operations
+db = client[db_name]
 
+# API to get the list of all resumes from MongoDB
+@app.post("/get_resumes")
+def get_resumes():
+    collection = db[collection_resume]
+    documents = collection.find()
+    resumes = []
+    for document in documents:
+        resume_name = document["_id"]
+        resumes.append(resume_name)
+    return resumes
+
+#API endpoint to upload file to S3 and the extracted text to mongoDB
 @app.post("/uploadfile/")
-async def upload_file(file: UploadFile = File(...)):
+async def upload_file(filename:str ,file: UploadFile = File(...)):
     """
     Uploads a file to an S3 bucket.
     """
     try:
-        # Create a key for the file in the S3 bucket
-        timestamp = int(time.time())
-        key = f"{timestamp}.pdf"
+        text = ""
+        content = await file.read()  # Read the content of the file
+        pdf_reader = PdfReader(io.BytesIO(content))
+        for page in pdf_reader.pages:
+            text += page.extract_text()
+
+        # Generate a unique key for the file
+        key = f"{int(time.time())}-{filename}"
+        # Add resume to mongoDB
+        document = {"_id": key, "resume": text}
+        collection = db[collection_resume]
+        result = collection.insert_one(document)
         # Upload the file to S3
-        s3.upload_fileobj(file.file, s3_bucket, f"resumes/{key}")
+        s3.upload_fileobj(io.BytesIO(content), s3_bucket, f"resumes/{key}")
         
-        return {"message": "File uploaded successfully!", "filename_in_s3":key}
+        return {"message": "File uploaded successfully!", "filename_in_s3":key, "mongo_inserted_id": str(result.inserted_id)}
     except botocore.exceptions.ParamValidationError as e:
         return {"error": f"Parameter validation error: {e}"}
     except botocore.exceptions.ClientError as e:
         return {"error": f"Client error: {e}"}
 
+#API to get the resume and job description from mongoDB
+@app.get("/get_resume_and_job_description")
+def get_resume_and_job_description(filename: str):
+    collection_resume = db[collection_resume]
+    collection_job_description = db[collection_job_description]
+    document_resume = collection_resume.find_one({"_id": filename})
+    document_job_description = collection_job_description.find_one({"_id": filename})
+    return {"resume": document_resume, "job_description": document_job_description}
+
+
+# #API endpoint to add job description to the mongoDB
+@app.post("/add_job_description")
+def add_job_description(filename:str, job_description: str):
+    collection = db[collection_job_description]
+    document = {"_id": filename, "job_description": job_description}
+    result = collection.insert_one(document)
+    return {"message": "Job Description added successfully!", "mongo_inserted_id": str(result.inserted_id)}
+
+#API Endpoint to get the resume from mongoDB
+@app.get("/get_resume")
+def get_resume(filename: str):
+    collection = db[collection_resume]
+    document = collection.find_one({"_id": filename})
+    return document
 
 @app.get("/resume_question/")
 async def get_resume_question(resume, no_of_questions):
