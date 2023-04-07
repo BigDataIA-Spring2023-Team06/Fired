@@ -126,26 +126,29 @@ with col3:
 
     if job_description_new:
         # Role Based Questions
+        st.subheader("Role Based Questions")
         params_jd_qs = {"job_description": job_description_new, "no_of_questions": 1}
         response = requests.get(f"{host}/jd_question/", params=params_jd_qs)
         if response.status_code == 200:
-            st.write("Role Based Questions")
             st.write(response.json().get("question"))
-
+        feedback=""
         # Resume Feedback and Customized Resume Questions
+        st.subheader("Resume Feedback and Customized Resume Questions")
         params_match = {"resume": resume_new, "jd": job_description_new}
         response = requests.get(f"{host}/resume_match/", params=params_match)
         if response.status_code == 200:
             feedback = response.json().get("resume_feedback")
-            st.write(feedback)
+            feedback_response = feedback
+            st.write(f"Feedback: **{feedback_response}**")
 
             params_resume_qs = {"resume": resume_new, "no_of_questions": 1}
             response = requests.get(f"{host}/resume_question/", params=params_resume_qs)
             if response.status_code == 200:
-                st.write("Customized Resume Questions")
+                st.subheader("Customized Resume Questions")
                 st.write(response.json().get("resume_question"))
 
                 # Sentiment Analysis
+                st.subheader("Sentiment Analysis")
                 params = {"text": feedback}
                 response_adjectives = requests.get(f"{host}/get_adjectives/", params=params)
                 if response_adjectives.status_code == 200:
@@ -158,8 +161,9 @@ with col3:
                         match_perc = match.json()
                         label = match_perc["result"][0]["label"]
                         score = match_perc["result"][0]["score"]
-                        st.write(f"Sentiment: {label}")
-                        st.write(f"Confidence: {round(float(score),2)*100}%")
+                        st.write(f"Sentiment: **{label}**")
+                        st.write(f"Confidence: **{round(float(score),2)*100}%**")    
+
 
 #####################deprecated code#####################
     #                 else:

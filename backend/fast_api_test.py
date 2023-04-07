@@ -116,7 +116,7 @@ async def get_jd_question(job_description, no_of_questions):
 
 @app.get("/resume_match/")
 async def get_jd_question(resume, jd):
-    return {"resume_feedback" : gpt_helper.get_response_gpt(f"tell if the candidate with this resume - {resume} is fit for role with the following job description - {jd} be honest and blunt")} 
+    return {"resume_feedback" : gpt_helper.get_response_gpt(f"evaluate and provide insights to the best of your abilities if the candidate with the follwing resume: {resume} is fit for role with the following job description - {jd}")} 
 
 # @app.get("/resume_match/")
 # async def get_jd_question(resume, jd):
